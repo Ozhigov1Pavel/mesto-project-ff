@@ -1,3 +1,21 @@
 .popup__form {
   margin-top: 27px;
 }
+
+.popup__input {
+  outline: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.popup__form .popup__input.popup__input_type_error {
+  border-bottom: 1px solid #FF0000;
+}
+
+.popup__error {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.2;
+  color: #FF0000;
+  min-height: 16px; 
+}
