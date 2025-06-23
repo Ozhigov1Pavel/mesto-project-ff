@@ -1,4 +1,4 @@
-// Показать ошибку
+// Показать текст ошибки под полем
 function showInputError(formEl, inputEl, message, config) {
   const errorEl = formEl.querySelector(`[data-error-for="${inputEl.name}"]`);
   inputEl.classList.add(config.inputErrorClass);
@@ -6,88 +6,81 @@ function showInputError(formEl, inputEl, message, config) {
   errorEl.classList.add(config.errorClass);
 }
 
-// Скрыть ошибку
+// Скрыть текст ошибки под полем
 function hideInputError(formEl, inputEl, config) {
   const errorEl = formEl.querySelector(`[data-error-for="${inputEl.name}"]`);
   inputEl.classList.remove(config.inputErrorClass);
-  errorEl.textContent = "";
+  errorEl.textContent = '';
   errorEl.classList.remove(config.errorClass);
 }
 
-// Проверить одно поле
+// Проверить валидность одного поля
 function checkInputValidity(formEl, inputEl, config) {
-  const valTrimmed = inputEl.value.trim();
-
-  if (valTrimmed === "") {
-    showInputError(formEl, inputEl, "Вы пропустили это поле", config);
+  // 1. Обязательное поле
+  if (inputEl.validity.valueMissing) {
+    // Для url оставляем стандартное сообщение, для остальных — кастомное
+    const message = inputEl.type === 'url'
+      ? inputEl.validationMessage            // "Введите адрес сайта."
+      : inputEl.dataset.errorRequired;      // e.g. "Вы пропустили это поле"
+    showInputError(formEl, inputEl, message, config);
     return;
   }
-
-  if (
-    (inputEl.name === "name" || inputEl.name === "place-name") &&
-    !/^[A-Za-zА-Яа-яЁё\s-]+$/.test(valTrimmed)
-  ) {
+  // 2. Несоответствие паттерну
+  if (inputEl.validity.patternMismatch) {
     showInputError(
       formEl,
       inputEl,
-      inputEl.dataset.error || "Разрешены только буквы, дефис и пробел",
+      inputEl.dataset.errorPattern,          // e.g. "Разрешены только буквы, дефис и пробел"
       config
     );
     return;
   }
-
-  if (!inputEl.checkValidity()) {
+  // 3. Любые другие стандартные ошибки
+  if (!inputEl.validity.valid) {
     showInputError(formEl, inputEl, inputEl.validationMessage, config);
     return;
   }
-
+  // 4. Поле валидно
   hideInputError(formEl, inputEl, config);
 }
 
-// Переключить состояние кнопки
+// Переключить состояние кнопки отправки
 function toggleButtonState(inputList, buttonEl, config) {
-  const isFormValid = inputList.every(
-    (i) => i.checkValidity() && i.value.trim() !== ""
-  );
-  if (isFormValid) {
-    buttonEl.disabled = false;
-    buttonEl.classList.remove(config.inactiveButtonClass);
-  } else {
-    buttonEl.disabled = true;
-    buttonEl.classList.add(config.inactiveButtonClass);
-  }
+  const isFormValid = inputList.every(inputEl => inputEl.checkValidity());
+  buttonEl.disabled = !isFormValid;
+  buttonEl.classList.toggle(config.inactiveButtonClass, !isFormValid);
 }
 
-// Навесить слушатели на форму
+// Навесить слушатели на все поля формы
 function setEventListeners(formEl, config) {
   const inputs = Array.from(formEl.querySelectorAll(config.inputSelector));
   const button = formEl.querySelector(config.submitButtonSelector);
 
-  // сразу проверить кнопку
+  // Изначально проверить состояние кнопки
   toggleButtonState(inputs, button, config);
 
-  inputs.forEach((inputEl) => {
-    inputEl.addEventListener("input", () => {
+  // При каждом вводе проверять валидность и переключать кнопку
+  inputs.forEach(inputEl => {
+    inputEl.addEventListener('input', () => {
       checkInputValidity(formEl, inputEl, config);
       toggleButtonState(inputs, button, config);
     });
   });
 }
 
-// Включить валидацию всех форм
+// Включить валидацию на всех формах
 export function enableValidation(config) {
-  document.querySelectorAll(config.formSelector).forEach((formEl) => {
-    formEl.setAttribute("novalidate", true);
+  document.querySelectorAll(config.formSelector).forEach(formEl => {
+    formEl.setAttribute('novalidate', true);
     setEventListeners(formEl, config);
   });
 }
 
-// Очистить ошибки и отключить кнопку
+// Очистить ошибки и сбросить состояние кнопки
 export function clearValidation(formEl, config) {
   const inputs = Array.from(formEl.querySelectorAll(config.inputSelector));
   const button = formEl.querySelector(config.submitButtonSelector);
-  inputs.forEach((inputEl) => {
-    hideInputError(formEl, inputEl, config);
-  });
+
+  inputs.forEach(inputEl => hideInputError(formEl, inputEl, config));
   toggleButtonState(inputs, button, config);
 }
